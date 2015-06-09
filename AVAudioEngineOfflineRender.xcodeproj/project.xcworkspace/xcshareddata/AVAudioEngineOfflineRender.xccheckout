@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>IDESourceControlProjectFavoriteDictionaryKey</key>
+	<false/>
+	<key>IDESourceControlProjectIdentifier</key>
+	<string>59CE02A9-4D2A-4A3A-9157-D976D7AF0DD8</string>
+	<key>IDESourceControlProjectName</key>
+	<string>AVAudioEngineOfflineRender</string>
+	<key>IDESourceControlProjectOriginsDictionary</key>
+	<dict>
+		<key>360175B03F5FBA8DE058AF47BD9B544A810E528E</key>
+		<string>github.com:VladimirKravchenko/AVAudioEngineOfflineRender.git</string>
+	</dict>
+	<key>IDESourceControlProjectPath</key>
+	<string>AVAudioEngineOfflineRender.xcodeproj</string>
+	<key>IDESourceControlProjectRelativeInstallPathDictionary</key>
+	<dict>
+		<key>360175B03F5FBA8DE058AF47BD9B544A810E528E</key>
+		<string>../..</string>
+	</dict>
+	<key>IDESourceControlProjectURL</key>
+	<string>github.com:VladimirKravchenko/AVAudioEngineOfflineRender.git</string>
+	<key>IDESourceControlProjectVersion</key>
+	<integer>111</integer>
+	<key>IDESourceControlProjectWCCIdentifier</key>
+	<string>360175B03F5FBA8DE058AF47BD9B544A810E528E</string>
+	<key>IDESourceControlProjectWCConfigurations</key>
+	<array>
+		<dict>
+			<key>IDESourceControlRepositoryExtensionIdentifierKey</key>
+			<string>public.vcs.git</string>
+			<key>IDESourceControlWCCIdentifierKey</key>
+			<string>360175B03F5FBA8DE058AF47BD9B544A810E528E</string>
+			<key>IDESourceControlWCCName</key>
+			<string>AVAudioEngineOfflineRender</string>
+		</dict>
+	</array>
+</dict>
+</plist>

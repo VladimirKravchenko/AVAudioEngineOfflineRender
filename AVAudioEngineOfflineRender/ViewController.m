@@ -13,6 +13,7 @@
 @property (strong, nonatomic) AVAudioEngine *engine;
 @property (strong, nonatomic) AVAudioPlayerNode *playerNode;
 @property(nonatomic, strong) AVAudioMixerNode *mixer;
+@property(nonatomic, strong) AVAudioFile *file;
 @end
 
 @implementation ViewController
@@ -44,9 +45,9 @@
 - (void)scheduleFIleToPlay {
     NSError* error;
     NSURL *fileURL = [[NSBundle mainBundle] URLForResource:@"jubel" withExtension:@"m4a"];
-    AVAudioFile *file = [[AVAudioFile alloc] initForReading:fileURL error:&error];
-    if (file)
-        [self.playerNode scheduleFile:file atTime:nil completionHandler:nil];
+    self.file = [[AVAudioFile alloc] initForReading:fileURL error:&error];
+    if (self.file)
+        [self.playerNode scheduleFile:self.file atTime:nil completionHandler:nil];
     else
         NSLog(@"Can't read file: %@", error);
 }
@@ -57,6 +58,7 @@
     [self.playerNode play];
     [self.engine pause];
     [self renderAudioAndWriteToFile];
+    [sender setHidden:YES];
 }
 
 #pragma mark - Offline rendering
@@ -66,9 +68,7 @@
     AVAudioOutputNode *outputNode = audioEngine.outputNode;
     AudioUnit outputUnit = audioEngine.outputNode.audioUnit;
     AudioStreamBasicDescription const *audioDescription = [outputNode outputFormatForBus:0].streamDescription;
-    double sampleRate = audioDescription->mSampleRate;
-    NSTimeInterval duration = 40; // your audio duration
-    NSUInteger lengthInFrames = (UInt32) (duration * sampleRate);
+    AVAudioFramePosition lengthInFrames = self.file.length;
     const int kBufferLength = 4096;
     AudioBufferList *bufferList = AEAllocateAndInitAudioBufferList(*audioDescription, kBufferLength);
     AudioTimeStamp timeStamp;
@@ -122,6 +122,11 @@
     ExtAudioFileDispose(audioFile);
     AEFreeAudioBufferList(bufferList);
     NSLog(@"Finished writing to file at path: %@", path);
+    [[[UIAlertView alloc] initWithTitle:@"Success"
+                                message:@"You can find your file's path in logs"
+                               delegate:nil
+                      cancelButtonTitle:@"Ok"
+                      otherButtonTitles:nil] show];
 }
 
 AudioBufferList *AEAllocateAndInitAudioBufferList(AudioStreamBasicDescription audioFormat, int frameCount) {
