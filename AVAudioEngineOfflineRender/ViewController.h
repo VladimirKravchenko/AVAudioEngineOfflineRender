@@ -8,6 +8,8 @@
 
 #import <UIKit/UIKit.h>
 
+@class AVAudioMixerNode;
+
 @interface ViewController : UIViewController
 
 

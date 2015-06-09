@@ -14,6 +14,9 @@
 		E761DAE11B278592001DA2D1 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E761DAE01B278592001DA2D1 /* Images.xcassets */; };
 		E761DAE41B278592001DA2D1 /* LaunchScreen.xib in Resources */ = {isa = PBXBuildFile; fileRef = E761DAE21B278592001DA2D1 /* LaunchScreen.xib */; };
 		E761DAF01B278592001DA2D1 /* AVAudioEngineOfflineRenderTests.m in Sources */ = {isa = PBXBuildFile; fileRef = E761DAEF1B278592001DA2D1 /* AVAudioEngineOfflineRenderTests.m */; };
+		E761DAFA1B2785C6001DA2D1 /* jubel.m4a in Resources */ = {isa = PBXBuildFile; fileRef = E761DAF91B2785C4001DA2D1 /* jubel.m4a */; };
+		E761DAFC1B278679001DA2D1 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E761DAFB1B278679001DA2D1 /* AVFoundation.framework */; };
+		E761DAFE1B27867F001DA2D1 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E761DAFD1B27867F001DA2D1 /* CoreAudio.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +43,9 @@
 		E761DAE91B278592001DA2D1 /* AVAudioEngineOfflineRenderTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AVAudioEngineOfflineRenderTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E761DAEE1B278592001DA2D1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E761DAEF1B278592001DA2D1 /* AVAudioEngineOfflineRenderTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AVAudioEngineOfflineRenderTests.m; sourceTree = "<group>"; };
+		E761DAF91B2785C4001DA2D1 /* jubel.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = jubel.m4a; sourceTree = "<group>"; };
+		E761DAFB1B278679001DA2D1 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		E761DAFD1B27867F001DA2D1 /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +53,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E761DAFE1B27867F001DA2D1 /* CoreAudio.framework in Frameworks */,
+				E761DAFC1B278679001DA2D1 /* AVFoundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -63,6 +71,7 @@
 		E761DAC71B278591001DA2D1 = {
 			isa = PBXGroup;
 			children = (
+				E761DAFF1B27868B001DA2D1 /* Frameworks */,
 				E761DAD21B278591001DA2D1 /* AVAudioEngineOfflineRender */,
 				E761DAEC1B278592001DA2D1 /* AVAudioEngineOfflineRenderTests */,
 				E761DAD11B278591001DA2D1 /* Products */,
@@ -96,6 +105,7 @@
 		E761DAD31B278591001DA2D1 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				E761DAF91B2785C4001DA2D1 /* jubel.m4a */,
 				E761DAD41B278591001DA2D1 /* Info.plist */,
 				E761DAD51B278591001DA2D1 /* main.m */,
 			);
@@ -117,6 +127,15 @@
 				E761DAEE1B278592001DA2D1 /* Info.plist */,
 			);
 			name = "Supporting Files";
+			sourceTree = "<group>";
+		};
+		E761DAFF1B27868B001DA2D1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E761DAFD1B27867F001DA2D1 /* CoreAudio.framework */,
+				E761DAFB1B278679001DA2D1 /* AVFoundation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -202,6 +221,7 @@
 				E761DADF1B278592001DA2D1 /* Main.storyboard in Resources */,
 				E761DAE41B278592001DA2D1 /* LaunchScreen.xib in Resources */,
 				E761DAE11B278592001DA2D1 /* Images.xcassets in Resources */,
+				E761DAFA1B2785C6001DA2D1 /* jubel.m4a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
