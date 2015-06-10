@@ -70,19 +70,25 @@
     ExtAudioFileRef audioFile = [self createAndSetupExtAudioFileWithASBD:audioDescription andFilePath:path];
     if (!audioFile)
         return;
-    AVAudioFramePosition lengthInFrames = self.file.length;
-    NSUInteger sampleRate = (NSUInteger) audioDescription->mSampleRate;
-    const NSUInteger kBufferLength = MIN(4096, sampleRate);
+    AVURLAsset *asset = [AVURLAsset assetWithURL:self.file.url];
+    NSTimeInterval duration = CMTimeGetSeconds(asset.duration);
+    NSUInteger lengthInFrames = (NSUInteger) (duration * audioDescription->mSampleRate);
+    const NSUInteger kBufferLength = 4096;
     AudioBufferList *bufferList = AEAllocateAndInitAudioBufferList(*audioDescription, kBufferLength);
     AudioTimeStamp timeStamp;
     memset (&timeStamp, 0, sizeof(timeStamp));
     timeStamp.mFlags = kAudioTimeStampSampleTimeValid;
     OSStatus status = noErr;
-    NSUInteger i;
-    for (i = 0; i < lengthInFrames; i += kBufferLength) {
+    for (NSUInteger i = kBufferLength; i < lengthInFrames; i += kBufferLength) {
         status = [self renderToBufferList:bufferList writeToFile:audioFile bufferLength:kBufferLength timeStamp:&timeStamp];
         if (status != noErr)
             break;
+    }
+    if (status == noErr && timeStamp.mSampleTime < lengthInFrames) {
+        NSUInteger restBufferLength = (NSUInteger) (lengthInFrames - timeStamp.mSampleTime);
+        AudioBufferList *restBufferList = AEAllocateAndInitAudioBufferList(*audioDescription, restBufferLength);
+        status = [self renderToBufferList:restBufferList writeToFile:audioFile bufferLength:restBufferLength timeStamp:&timeStamp];
+        AEFreeAudioBufferList(restBufferList);
     }
     AEFreeAudioBufferList(bufferList);
     ExtAudioFileDispose(audioFile);
@@ -110,7 +116,8 @@
     destinationFormat.mSampleRate = audioDescription->mSampleRate;
     destinationFormat.mFormatID = kAudioFormatMPEG4AAC;
     ExtAudioFileRef audioFile;
-    OSStatus status = ExtAudioFileCreateWithURL((__bridge CFURLRef) [NSURL fileURLWithPath:path],
+    OSStatus status = ExtAudioFileCreateWithURL(
+            (__bridge CFURLRef) [NSURL fileURLWithPath:path],
             kAudioFileM4AType,
             &destinationFormat,
             NULL,
