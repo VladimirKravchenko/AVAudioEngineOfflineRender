@@ -10,8 +10,8 @@
 #import <AVFoundation/AVFoundation.h>
 
 @interface ViewController ()
-@property (strong, nonatomic) AVAudioEngine *engine;
-@property (strong, nonatomic) AVAudioPlayerNode *playerNode;
+@property(strong, nonatomic) AVAudioEngine *engine;
+@property(strong, nonatomic) AVAudioPlayerNode *playerNode;
 @property(nonatomic, strong) AVAudioMixerNode *mixer;
 @property(nonatomic, strong) AVAudioFile *file;
 @end
@@ -35,15 +35,15 @@
     self.mixer = [self.engine mainMixerNode];
     [self.engine connect:distortionEffect to:self.mixer format:[self.mixer outputFormatForBus:0]];
     [distortionEffect loadFactoryPreset:AVAudioUnitDistortionPresetDrumsBitBrush];
-    NSError* error;
+    NSError *error;
     if (![self.engine startAndReturnError:&error])
         NSLog(@"Can't start engine: %@", error);
     else
-        [self scheduleFIleToPlay];
+        [self scheduleFileToPlay];
 }
 
-- (void)scheduleFIleToPlay {
-    NSError* error;
+- (void)scheduleFileToPlay {
+    NSError *error;
     NSURL *fileURL = [[NSBundle mainBundle] URLForResource:@"jubel" withExtension:@"m4a"];
     self.file = [[AVAudioFile alloc] initForReading:fileURL error:&error];
     if (self.file)
@@ -64,27 +64,53 @@
 #pragma mark - Offline rendering
 
 - (void)renderAudioAndWriteToFile {
-    AVAudioEngine *audioEngine = self.engine;
-    AVAudioOutputNode *outputNode = audioEngine.outputNode;
-    AudioUnit outputUnit = audioEngine.outputNode.audioUnit;
+    AVAudioOutputNode *outputNode = self.engine.outputNode;
     AudioStreamBasicDescription const *audioDescription = [outputNode outputFormatForBus:0].streamDescription;
+    NSString *path = [self filePath];
+    ExtAudioFileRef audioFile = [self createAndSetupExtAudioFileWithASBD:audioDescription andFilePath:path];
+    if (!audioFile)
+        return;
     AVAudioFramePosition lengthInFrames = self.file.length;
-    const int kBufferLength = 4096;
+    NSUInteger sampleRate = (NSUInteger) audioDescription->mSampleRate;
+    const NSUInteger kBufferLength = MIN(4096, sampleRate);
     AudioBufferList *bufferList = AEAllocateAndInitAudioBufferList(*audioDescription, kBufferLength);
     AudioTimeStamp timeStamp;
     memset (&timeStamp, 0, sizeof(timeStamp));
     timeStamp.mFlags = kAudioTimeStampSampleTimeValid;
+    OSStatus status = noErr;
+    NSUInteger i;
+    for (i = 0; i < lengthInFrames; i += kBufferLength) {
+        status = [self renderToBufferList:bufferList writeToFile:audioFile bufferLength:kBufferLength timeStamp:&timeStamp];
+        if (status != noErr)
+            break;
+    }
+    AEFreeAudioBufferList(bufferList);
+    ExtAudioFileDispose(audioFile);
+    if (status != noErr)
+        [self showAlertWithTitle:@"Error" message:@"See logs for details"];
+    else {
+        NSLog(@"Finished writing to file at path: %@", path);
+        [self showAlertWithTitle:@"Success" message:@"You can find your file's path in logs"];
+    }
+}
+
+- (NSString *)filePath {
     NSArray *documentsFolders =
             NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
     NSString *fileName = [NSString stringWithFormat:@"%@.m4a", [[NSUUID UUID] UUIDString]];
     NSString *path = [documentsFolders[0] stringByAppendingPathComponent:fileName];
+    return path;
+}
+
+- (ExtAudioFileRef)createAndSetupExtAudioFileWithASBD:(AudioStreamBasicDescription const *)audioDescription
+                                          andFilePath:(NSString *)path {
     AudioStreamBasicDescription destinationFormat;
     memset(&destinationFormat, 0, sizeof(destinationFormat));
     destinationFormat.mChannelsPerFrame = audioDescription->mChannelsPerFrame;
     destinationFormat.mSampleRate = audioDescription->mSampleRate;
     destinationFormat.mFormatID = kAudioFormatMPEG4AAC;
     ExtAudioFileRef audioFile;
-    OSStatus status = ExtAudioFileCreateWithURL((__bridge CFURLRef)[NSURL fileURLWithPath:path],
+    OSStatus status = ExtAudioFileCreateWithURL((__bridge CFURLRef) [NSURL fileURLWithPath:path],
             kAudioFileM4AType,
             &destinationFormat,
             NULL,
@@ -92,38 +118,51 @@
             &audioFile
     );
     if (status != noErr) {
-        NSLog(@"Can not create audio file writer");
-        return;
+        NSLog(@"Can not create ext audio file");
+        return nil;
     }
     UInt32 codecManufacturer = kAppleSoftwareAudioCodecManufacturer;
-    status = ExtAudioFileSetProperty(audioFile, kExtAudioFileProperty_CodecManufacturer, sizeof(UInt32), &codecManufacturer);
-    status = ExtAudioFileSetProperty(audioFile, kExtAudioFileProperty_ClientDataFormat, sizeof(AudioStreamBasicDescription), audioDescription);
+    status = ExtAudioFileSetProperty(
+            audioFile, kExtAudioFileProperty_CodecManufacturer, sizeof(UInt32), &codecManufacturer
+    );
+    status = ExtAudioFileSetProperty(
+            audioFile, kExtAudioFileProperty_ClientDataFormat, sizeof(AudioStreamBasicDescription), audioDescription
+    );
     status = ExtAudioFileWriteAsync(audioFile, 0, NULL);
     if (status != noErr) {
-        NSLog(@"Can not setup audio file writer");
-        return;
+        NSLog(@"Can not setup ext audio file");
+        return nil;
     }
-    for (NSUInteger i = 0; i < lengthInFrames; i += kBufferLength) {
-        for ( int bufferIndex = 0; bufferIndex < bufferList->mNumberBuffers; bufferIndex++) {
-            memset(bufferList->mBuffers[bufferIndex].mData, 0, bufferList->mBuffers[bufferIndex].mDataByteSize);
-        }
-        status = AudioUnitRender(outputUnit, 0, &timeStamp, 0, kBufferLength, bufferList);
-        if (status != noErr) {
-            NSLog(@"Can not render audio unit");
-            return;
-        }
-        timeStamp.mSampleTime += kBufferLength;
-        status = ExtAudioFileWrite(audioFile, kBufferLength, bufferList);
-        if (status != noErr) {
-            NSLog(@"Can not write audio to file");
-            return;
-        }
+    return audioFile;
+}
+
+- (OSStatus)renderToBufferList:(AudioBufferList *)bufferList
+                   writeToFile:(ExtAudioFileRef)audioFile
+                  bufferLength:(NSUInteger)bufferLength
+                     timeStamp:(AudioTimeStamp *)timeStamp {
+    [self clearBufferList:bufferList];
+    AudioUnit outputUnit = self.engine.outputNode.audioUnit;
+    OSStatus status = AudioUnitRender(outputUnit, 0, timeStamp, 0, bufferLength, bufferList);
+    if (status != noErr) {
+        NSLog(@"Can not render audio unit");
+        return status;
     }
-    ExtAudioFileDispose(audioFile);
-    AEFreeAudioBufferList(bufferList);
-    NSLog(@"Finished writing to file at path: %@", path);
-    [[[UIAlertView alloc] initWithTitle:@"Success"
-                                message:@"You can find your file's path in logs"
+    timeStamp->mSampleTime += bufferLength;
+    status = ExtAudioFileWrite(audioFile, bufferLength, bufferList);
+    if (status != noErr)
+        NSLog(@"Can not write audio to file");
+    return status;
+}
+
+- (void)clearBufferList:(AudioBufferList *)bufferList {
+    for (int bufferIndex = 0; bufferIndex < bufferList->mNumberBuffers; bufferIndex++) {
+        memset(bufferList->mBuffers[bufferIndex].mData, 0, bufferList->mBuffers[bufferIndex].mDataByteSize);
+    }
+}
+
+- (void)showAlertWithTitle:(NSString *)title message:(NSString *)message {
+    [[[UIAlertView alloc] initWithTitle:title
+                                message:message
                                delegate:nil
                       cancelButtonTitle:@"Ok"
                       otherButtonTitles:nil] show];
@@ -133,16 +172,16 @@ AudioBufferList *AEAllocateAndInitAudioBufferList(AudioStreamBasicDescription au
     int numberOfBuffers = audioFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved ? audioFormat.mChannelsPerFrame : 1;
     int channelsPerBuffer = audioFormat.mFormatFlags & kAudioFormatFlagIsNonInterleaved ? 1 : audioFormat.mChannelsPerFrame;
     int bytesPerBuffer = audioFormat.mBytesPerFrame * frameCount;
-    AudioBufferList *audio = malloc(sizeof(AudioBufferList) + (numberOfBuffers-1)*sizeof(AudioBuffer));
-    if ( !audio ) {
+    AudioBufferList *audio = malloc(sizeof(AudioBufferList) + (numberOfBuffers - 1) * sizeof(AudioBuffer));
+    if (!audio) {
         return NULL;
     }
     audio->mNumberBuffers = numberOfBuffers;
-    for ( int i=0; i<numberOfBuffers; i++ ) {
-        if ( bytesPerBuffer > 0 ) {
+    for (int i = 0; i < numberOfBuffers; i++) {
+        if (bytesPerBuffer > 0) {
             audio->mBuffers[i].mData = calloc(bytesPerBuffer, 1);
-            if ( !audio->mBuffers[i].mData ) {
-                for ( int j=0; j<i; j++ ) free(audio->mBuffers[j].mData);
+            if (!audio->mBuffers[i].mData) {
+                for (int j = 0; j < i; j++) free(audio->mBuffers[j].mData);
                 free(audio);
                 return NULL;
             }
@@ -155,9 +194,9 @@ AudioBufferList *AEAllocateAndInitAudioBufferList(AudioStreamBasicDescription au
     return audio;
 }
 
-void AEFreeAudioBufferList(AudioBufferList *bufferList ) {
-    for ( int i=0; i<bufferList->mNumberBuffers; i++ ) {
-        if ( bufferList->mBuffers[i].mData ) free(bufferList->mBuffers[i].mData);
+void AEFreeAudioBufferList(AudioBufferList *bufferList) {
+    for (int i = 0; i < bufferList->mNumberBuffers; i++) {
+        if (bufferList->mBuffers[i].mData) free(bufferList->mBuffers[i].mData);
     }
     free(bufferList);
 }
