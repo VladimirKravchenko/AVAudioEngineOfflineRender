@@ -14,6 +14,9 @@
 @property(strong, nonatomic) AVAudioPlayerNode *playerNode;
 @property(nonatomic, strong) AVAudioMixerNode *mixer;
 @property(nonatomic, strong) AVAudioFile *file;
+@property(nonatomic, copy) NSString *resultPath;
+@property (weak, nonatomic) IBOutlet UIButton *playButton;
+@property(nonatomic, strong) AVAudioPlayer *audioPlayer;
 @end
 
 @implementation ViewController
@@ -21,6 +24,13 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     [self configureAudioEngine];
+    NSError *error;
+    [[AVAudioSession sharedInstance] setCategory:AVAudioSessionCategoryPlayback error:&error];
+    if (error)
+        NSLog(@"%@", error);
+    [[AVAudioSession sharedInstance] setActive:YES error:&error];
+    if (error)
+        NSLog(@"%@", error);
 }
 
 #pragma mark - Audio setup
@@ -54,26 +64,48 @@
 
 #pragma mark - IBAction
 
+- (IBAction)playButtonPressed:(id)sender {
+    if (!self.audioPlayer) {
+        NSURL *url = [NSURL fileURLWithPath:self.resultPath];
+        NSError *error;
+        self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:&error];
+        if (error)
+            NSLog(@"Can't init audio player: %@", error);
+    }
+    if ([self.audioPlayer isPlaying]) {
+        [self.playButton setTitle:@"Play" forState:UIControlStateNormal];
+        [self.audioPlayer stop];
+    }
+    else {
+        [self.playButton setTitle:@"Stop" forState:UIControlStateNormal];
+        [self.audioPlayer play];
+    }
+}
+
 - (IBAction)renderButtonPressed:(id)sender {
+    [sender setHidden:YES];
     [self.playerNode play];
     [self.engine pause];
-    [self renderAudioAndWriteToFile];
-    [sender setHidden:YES];
+    NSString *path = [self renderAudioAndWriteToFile];
+    if (path) {
+        self.resultPath = path;
+        [self.playButton setHidden:NO];
+    }
 }
 
 #pragma mark - Offline rendering
 
-- (void)renderAudioAndWriteToFile {
+- (NSString *)renderAudioAndWriteToFile {
     AVAudioOutputNode *outputNode = self.engine.outputNode;
     AudioStreamBasicDescription const *audioDescription = [outputNode outputFormatForBus:0].streamDescription;
     NSString *path = [self filePath];
     ExtAudioFileRef audioFile = [self createAndSetupExtAudioFileWithASBD:audioDescription andFilePath:path];
     if (!audioFile)
-        return;
+        return nil;
     AVURLAsset *asset = [AVURLAsset assetWithURL:self.file.url];
     NSTimeInterval duration = CMTimeGetSeconds(asset.duration);
     NSUInteger lengthInFrames = (NSUInteger) (duration * audioDescription->mSampleRate);
-    const NSUInteger kBufferLength = 4096;
+    const NSUInteger kBufferLength = 3756;
     AudioBufferList *bufferList = AEAllocateAndInitAudioBufferList(*audioDescription, kBufferLength);
     AudioTimeStamp timeStamp;
     memset (&timeStamp, 0, sizeof(timeStamp));
@@ -90,14 +122,18 @@
         status = [self renderToBufferList:restBufferList writeToFile:audioFile bufferLength:restBufferLength timeStamp:&timeStamp];
         AEFreeAudioBufferList(restBufferList);
     }
+    SInt64 fileLengthInFrames;
+    UInt32 size = sizeof(SInt64);
+    ExtAudioFileGetProperty(audioFile, kExtAudioFileProperty_FileLengthFrames, &size, &fileLengthInFrames);
     AEFreeAudioBufferList(bufferList);
     ExtAudioFileDispose(audioFile);
     if (status != noErr)
         [self showAlertWithTitle:@"Error" message:@"See logs for details"];
     else {
         NSLog(@"Finished writing to file at path: %@", path);
-        [self showAlertWithTitle:@"Success" message:@"You can find your file's path in logs"];
+        [self showAlertWithTitle:@"Success!" message:@"Now you can play a result file"];
     }
+    return path;
 }
 
 - (NSString *)filePath {

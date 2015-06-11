@@ -10,6 +10,7 @@
 
 @class AVAudioMixerNode;
 @class AVAudioFile;
+@class AVAudioPlayer;
 
 @interface ViewController : UIViewController
 
